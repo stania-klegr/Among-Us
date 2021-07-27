@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+    <head>
+        <title>AMONG US - ADMIN</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font: 13px Helvetica, Arial; }
+        </style>
+    </head>
+    <body>
+        <h1>admin</h1>
+
+        <button id="start">start game</button>
+        <button id="reset">reset</button>
+
+        <hr>
+
+        <label for="numTasks">Number of tasks</label>
+        <input type="number" id="numTasks" name="numTasks" min="1" max="35" value="4">
+
+        <hr>
+
+        <label for="numImposters">Number of Imposters</label>
+        <input type="number" id="numImposters" name="numImposters" min="1" max="10" value="2">
+
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+
+        <script>
+            $(function () {
+                var socket = io();
+
+                $('#start').click(function(e){
+                    e.preventDefault(); // prevents page reloading
+                    socket.emit('start game', {numTasks: document.getElementById("numTasks").value, numImposters: document.getElementById("numImposters").value});
+                    return false;
+                });
+
+                $('#reset').click(function(e){
+                    e.preventDefault(); // prevents page reloading
+                    socket.emit('reset game', true);
+                    return false;
+                });
+            });
+        </script>
+    </body>
+</html>

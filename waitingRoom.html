@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+    <head>
+        <title>AMONG US - WAITING ROOM</title>
+        <style>
+            #mainTitle, #cPlayers{
+                font-size: 4em;
+                font-family: monospace;
+                color: white;
+            }
+
+            body{
+                background-color: #333333;
+                color: white;
+            }
+
+            input {
+                width: 90%;
+                padding: 12px 20px;
+                margin-left: 5%;
+                margin-bottom: 2%;
+                box-sizing: border-box;
+                border-radius: 1em;
+                font-size: 3em;
+            }
+
+            button {
+                background-color: #ffae00;
+                color: white;
+                padding: 15px 32px;
+                text-align: center;
+                text-decoration: none;
+                font-size: 3em;
+                margin-left: 5%;
+                margin-bottom: 2%;
+                width: 90%;
+                border-radius: 1em;
+            }
+
+            #title{
+                width: 100vw;
+            }
+        </style>
+    </head>
+    <body>
+
+        <img  id="title" src="title.jpg" alt="title">;
+
+        <p id="mainTitle">Please wait for the game to start</p>
+        <p id="cPlayers">Player count: <span id="playerCount">0</span> Players: <span id="playerNames">none yet.</span></p>
+
+        <div id="nameForm">
+            <form action="">
+                <input id="name" autocomplete="off" />
+                <button>Join Game</button>
+            </form>
+        </div>
+
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+
+        <script>
+            $(function () {
+                var socket = io();
+                var name = "";
+
+                $('form').submit(function(e){
+                    e.preventDefault(); // prevents page reloading
+                    socket.emit('add player', $('#name').val());
+                    name = $('#name').val();
+
+                    document.getElementById("nameForm").textContent = "";
+
+                    return false;
+                });
+
+                socket.on('game starting', function(msg){
+
+                    var arrayLength = msg.players.length;
+                    for (var i = 0; i < arrayLength; i++) {
+                        // console.log(msg[i]);
+                        if(msg.players[i].name == name){
+                            if(msg.players[i].imposter){
+                                console.log("you are the imposter");
+                                window.location.replace("imposter.html?name=" + name);
+                            }
+                            else{
+                                window.location.replace("game.html?name=" + name + "&tasksPerPlayer=" + msg.tasksPerPlayer);
+                            }
+                        }
+                    }
+                    console.log(msg);
+                });
+
+                socket.on('player count update', function(msg){
+                    // alert(msg.playerList);
+
+                    document.getElementById("playerCount").innerHTML = msg.numPlayers;
+                    document.getElementById("playerNames").innerHTML = "";
+
+                    var arrayLength = msg.playerList.length;
+                    for (var i = 0; i < arrayLength; i++) {
+                        console.log(msg.playerList[i]);
+                        document.getElementById("playerNames").innerHTML += " " + msg.playerList[i].name;
+                    }
+                });
+            });
+        </script>
+    </body>
+</html>

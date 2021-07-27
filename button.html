@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+    <head>
+        <title>AMONG US - EMERGENCY BUTTON</title>
+        <style>
+            #button {
+                height: 100vh;
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            html{
+                background-color: #4795d1;
+            }
+        </style>
+    </head>
+    <body>
+
+        <img id="button"src="button.png" alt="EMERGENCY">
+
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+
+        <script>
+            $(function () {
+                var socket = io();
+
+                $('#button').click(function(e){
+                    e.preventDefault(); // prevents page reloading
+                    socket.emit('button pressed', "EMERGENCY MEETING");
+                    alert("you pressed the button...")
+                    return false;
+                });
+            });
+        </script>
+    </body>
+</html>

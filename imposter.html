@@ -1,0 +1,568 @@
+<!doctype html>
+<html>
+  <head>
+    <title>AMONG US - IMPOSTER</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body{
+          background-color: #333333;
+          color: white;
+      }
+
+      .voteItem {
+          background-color: #c2c2c2;
+          border: 2px solid black;
+          border-radius: 0.5em;
+          font-size: 5em;
+          font-family: monospace;
+          color: black;
+          padding: 1em;
+          margin: 2%;
+      }
+
+      .voteItemDead {
+          background-color: #8c0000;
+          border: 2px solid black;
+          border-radius: 0.5em;
+          font-size: 5em;
+          font-family: monospace;
+          color: black;
+          padding: 1em;
+          margin: 2%;
+      }
+
+      .voteHeading{
+          border: 2px solid black;
+          font-size: 5em;
+          font-family: monospace;
+          color: black;
+          padding: 1em;
+          margin: 2%;
+      }
+
+      .voteItem:hover{
+          background-color: #a70fff;
+
+      }
+
+
+      #report, #sabotage, #kill{
+          display: block;
+          margin-left: auto;
+          margin-right: auto;
+          width: 45%;
+          margin-top: 5%;
+      }
+
+      #imposter, #completion {
+          font-size: 5em;
+          margin: 1%;
+          font-family: monospace;
+      }
+
+      #imposter{
+          color: red;
+          font-weight: bolder;
+      }
+
+      #tasksHeader {
+          font-size: 4em;
+          font-family: monospace;
+          margin: 1%;
+      }
+
+      .taskItem{
+          font-size: 4em;
+          font-family: monospace;
+          margin-left: 11ch;
+      }
+
+      #deathMessage{
+          color: white;
+          font-family: monospace;
+          font-size: 5em;
+          margin-top: 45vh;
+          margin-left: 2%;
+          margin-right: 2%;
+      }
+
+      #gameState{
+          font-family: monospace;
+          font-size: 10em;
+          margin-top: 45vh;
+          margin-left: 2%;
+          margin-right: 2%;
+      }
+
+      #sabotageReactor, #sabotageO2{
+          background-color: red;
+          border: 2px solid black;
+          border-radius: 0.5em;
+          font-size: 5em;
+          font-family: monospace;
+          color: white;
+          padding: 1em;
+          margin: 2%;
+      }
+
+      #fixReactor, #fixReactorInstructions, #fixo2, #fixo2Instructions{
+          background-color: red;
+          font-size: 5em;
+          font-family: monospace;
+          color: white;
+          padding: 1em;
+          text-align: center;
+      }
+
+      .flash {
+          animation: blinkingBackground 3s infinite;
+      }
+      @keyframes blinkingBackground{
+          0%		{ background-color: red;}
+          25%		{ background-color: #333333;}
+          50%		{ background-color: red;}
+          75%		{ background-color: #333333;}
+          100%	{ background-color: red;}
+      }
+
+
+      #sabotageTimer, #killTimer{
+          font-size: 15em;
+          font-family: monospace;
+          color: white;
+          padding: 0.5em;
+          margin: 2%;
+          text-align: center;
+      }
+
+
+    </style>
+  </head>
+  <body id="body">
+
+
+      <div id="fixReactor">FIX THE REACTOR:<span id="reactorTime"></span><p style="font-size: 0.6em;">(go to audi 1 kitchen then click this button for instructions)</p></div>
+      <div id="fixReactorInstructions">How to fix the reactor: put your hand on the tap. DO NOT remove your hand untill the reactor is disarmed or it explodes and you die. Click on to this message when you have your hand on the tap.</div>
+
+      <div id="fixo2">FIX THE OXYGEN:<span id="o2Time"></span><p style="font-size: 0.6em;">(go to audi 2 kitchen then click this button for instructions)</p></div>
+      <div id="fixo2Instructions">How to fix the O2: put your hand on one of the knobs on the stove. DO NOT remove your hand untill the oxygen is restored or you suffocate and die. Click on to this message when you have your hand on the knob.</div>
+
+
+
+    <div id="game">
+        <p id="imposter">Imposter</p>
+        <p id="completion">Task Completion = <span id="progress">0</span>%</p>
+
+        <div id="livePlayerButtons">
+
+            <img  id="report" src="report.png" alt="report body">;
+
+            <img  id="sabotage" src="sabotage.png" alt="sabotage">;
+            <div id="sabotageTimer">...</div>
+
+            <img  id="kill" src="kill.png" alt="yeet someone">;
+            <div id="killTimer">...</div>
+
+        </div>
+    </div>
+
+    <p id="gameState" style="color: red;"></p>
+
+    <div id="playersList"></div>
+
+    <div id="deathMessage"></div>
+
+    <div id="sabotageList">
+        <div id="sabotageReactor">REACTOR (audi 1 kitchen sink)</div>
+        <div id="sabotageO2">O2 (audi 2 gear cupboard)</div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+
+    <script>
+
+
+        ////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////
+        var sabotageCooldown = 45;
+        var killCooldown = 45;
+        ////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////
+
+        var alive = true;
+
+        $(function () {
+            var socket = io();
+
+            var votingEnabled = true;
+
+            document.getElementById("gameState").style.display = "none";
+            document.getElementById("deathMessage").style.display = "none";
+            document.getElementById("sabotageList").style.display = "none";
+            document.getElementById("fixReactor").style.display = "none";
+            document.getElementById("fixReactorInstructions").style.display = "none";
+            document.getElementById("fixo2").style.display = "none";
+            document.getElementById("fixo2Instructions").style.display = "none";
+            document.getElementById("sabotageTimer").style.display = "none";
+            document.getElementById("killTimer").style.display = "none";
+
+            //get the players name from the url
+            var parts = window.location.search.substr(1).split("&");
+            var $_GET = {};
+            for (var i = 0; i < parts.length; i++) {
+                var temp = parts[i].split("=");
+                $_GET[decodeURIComponent(temp[0])] = decodeURIComponent(temp[1]);
+            }
+            // alert($_GET['name']); // 1
+            name = $_GET['name'];
+
+
+        $('form').submit(function(e){//TODO is this actually doing anything
+          e.preventDefault(); // prevents page reloading
+          socket.emit('task completed', "username");
+          $('#m').val('');
+          return false;
+        });
+
+        socket.on('progress update', function(msg){
+            // alert("current progress: " + msg);
+            document.getElementById("progress").innerHTML = msg;
+            // $('#progress').text(msg));
+          // window.location.replace("http://www.w3schools.com");
+
+        });
+
+        socket.on('game over', function(msg){
+            document.getElementById("game").style.display = "none";
+            document.getElementById("deathMessage").style.display = "none";
+            document.getElementById("gameState").style.display = "block";            if(!msg){
+                document.getElementById("gameState").innerHTML = "Victory";
+                document.getElementById("gameState").style.color = "#2b7cff";
+            }
+            else{
+                document.getElementById("gameState").innerHTML = "Defeat";
+                document.getElementById("gameState").style.color = "#ff0f0f";
+            }
+        });
+
+
+        socket.on('something broken', function(msg){
+
+            sabotageTimer(sabotageCooldown);//TODO make this a var
+
+            if(!alive){
+                document.getElementById("fixReactor").innerHTML = 'FIX THE REACTOR:<span id="reactorTime"></span><p style="font-size: 0.6em;">Your dead, you can\'t do anything about it.</p>';
+                document.getElementById("fixo2").innerHTML = 'FIX THE OXYGEN:<span id="o2Time"></span><p style="font-size: 0.6em;">Your dead, you can\'t do anything about it.</p>';
+            }
+
+
+            document.getElementById("body").classList.add("flash");
+
+            if(msg){
+                document.getElementById("fixReactor").style.display = "block";
+            }
+            else{
+                document.getElementById("fixo2").style.display = "block";
+            }
+
+            var timeleft = sabotageCooldown;
+            var eTimer = setInterval(function(){
+                if(timeleft <= 0){
+                    clearInterval(eTimer);
+                    if(msg){
+                        socket.emit('something go boom', true);
+                    }
+                    else{
+                        socket.emit('something go boom', false);
+                    }
+                }
+                document.getElementById("reactorTime").innerHTML = timeleft;
+                document.getElementById("o2Time").innerHTML = timeleft;
+                timeleft -= 1;
+            }, 1000);
+        });
+
+
+        $('#fixReactor').click(function(e){
+          e.preventDefault(); // prevents page reloading
+          if(alive){
+              document.getElementById("fixReactorInstructions").style.display = "block";
+          }
+          return false;
+        });
+
+        $('#fixo2').click(function(e){
+            e.preventDefault(); // prevents page reloading
+            if(alive){
+                document.getElementById("fixo2Instructions").style.display = "block";
+            }
+            return false;
+        });
+
+        $('#fixReactorInstructions').click(function(e){
+          e.preventDefault(); // prevents page reloading
+
+          document.getElementById("fixReactorInstructions").style.display = "none";
+
+          socket.emit('i fixed something', name);
+          document.getElementById("fixReactor").innerHTML = 'WAIT FOR SECOND USER:<span id="reactorTime"></span>';
+
+          return false;
+        });
+
+        $('#fixo2Instructions').click(function(e){
+          e.preventDefault(); // prevents page reloading
+
+          document.getElementById("fixo2Instructions").style.display = "none";
+
+          socket.emit('i fixed something', name);
+          document.getElementById("fixo2").innerHTML = 'WAIT FOR SECOND USER:<span id="o2Time"></span>';
+
+          return false;
+        });
+
+
+        socket.on('fixed', function(msg){
+            document.getElementById("fixReactor").style.display = "none";
+            document.getElementById("body").classList.remove("flash");
+            document.getElementById("fixReactor").innerHTML = 'FIX THE REACTOR:<span id="reactorTime"></span><p style="font-size: 0.6em;">(go to audi 1 kitchen then click this button for instructions)</p>';
+
+            document.getElementById("fixo2").style.display = "none";
+            document.getElementById("body").classList.remove("flash");
+            document.getElementById("fixo2").innerHTML = 'FIX THE OXYGEN:<span id="o2Time"></span><p style="font-size: 0.6em;">(go to audi 2 kitchen then click this button for instructions)</p>';
+        });
+
+
+
+        $('#report').click(function(e){
+          e.preventDefault(); // prevents page reloading
+          socket.emit('body reported', name);
+          return false;
+        });
+
+
+        $('#sabotage').click(function(e){
+          e.preventDefault(); // prevents page reloading// TODO do I actually need this??
+
+          document.getElementById("game").style.display = "none";
+          document.getElementById("sabotageList").style.display = "block";
+
+          return false;//TODO why do i return false??
+        });
+
+        $('#sabotageReactor').click(function(e){
+            document.getElementById("game").style.display = "block";
+            document.getElementById("sabotageList").style.display = "none";
+
+            var thing = true;
+
+            socket.emit('break something', {name, thing});
+            sabotageTimer(sabotageCooldown);
+        });
+
+        $('#sabotageO2').click(function(e){
+            document.getElementById("game").style.display = "block";
+            document.getElementById("sabotageList").style.display = "none";
+
+            var thing = false;
+
+            socket.emit('break something', {name, thing});
+            sabotageTimer(sabotageCooldown);
+        });
+
+
+        function sabotageTimer(time){
+
+            document.getElementById("sabotageTimer").style.display = "block";
+            document.getElementById("sabotage").style.display = "none";
+
+
+            var stimeleft = time;
+            var sTimer = setInterval(function(){
+                if(stimeleft <= 0){
+                    clearInterval(sTimer);
+                    document.getElementById("sabotageTimer").style.display = "none";
+                    document.getElementById("sabotage").style.display = "block";
+                }
+                document.getElementById("sabotageTimer").innerHTML = stimeleft;
+                stimeleft -= 1;
+            }, 1000);
+        }
+
+        $('#kill').click(function(e){
+          e.preventDefault(); // prevents page reloading// TODO do I actually need this??
+
+          killTimer(killCooldown)//
+          return false;//TODO why do i return false??
+        });
+
+        function killTimer(time){
+
+
+            document.getElementById("kill").style.display = "none";
+            document.getElementById("killTimer").style.display = "block";
+
+
+            var ktimeleft = time;
+            var kTimer = setInterval(function(){
+                if(ktimeleft <= 0){
+                    clearInterval(kTimer);
+                    document.getElementById("killTimer").style.display = "none";
+                    document.getElementById("kill").style.display = "block";
+                }
+                document.getElementById("killTimer").innerHTML = ktimeleft;
+                ktimeleft -= 1;
+            }, 1000);
+        }
+
+
+
+
+        socket.on('reset', function(msg){
+            window.location.replace("waitingRoom.html");
+        });
+
+
+        socket.on('do vote', function(msg){
+
+            document.getElementById("playersList").style.opacity = 1;
+
+            votingEnabled = true;
+            // alert("current progress: " + msg);
+            document.getElementById("game").style.display = "none";
+            document.getElementById("playersList").style.display = "block";
+            document.getElementById("playersList").innerHTML = "";
+
+            //create the item
+            var node = document.createElement("div");
+            node.classList.add("voteHeading");
+
+
+            if(msg.caller == "EMERGENCY MEETING"){
+                node.style.backgroundColor = "yellow";
+                var textnode = document.createTextNode("EMERGENCY MEETING!");
+                node.appendChild(textnode);
+            }
+            else{
+                node.style.backgroundColor = "#037bfc";
+                var textnode = document.createTextNode(msg.caller + " found a body");
+                node.appendChild(textnode);
+            }
+
+            document.getElementById("playersList").appendChild(node);//add it to the list
+
+
+
+            var arrayLength = msg.playerList.length;
+            for (var i = 0; i < arrayLength; i++) {
+                console.log(msg.playerList[i]);
+
+                //create the item
+                var node = document.createElement("div");
+
+                if(msg.playerList[i].alive){
+                    node.classList.add("voteItem");
+                    node.onclick = function() { submitVote(this.innerHTML); };
+                }
+                else{
+                    node.classList.add("voteItemDead");
+                }
+                var textnode = document.createTextNode(msg.playerList[i].name);
+                node.appendChild(textnode);
+
+                document.getElementById("playersList").appendChild(node);//add it to the list
+            }
+
+            //create the item
+            var node = document.createElement("div");
+            node.onclick = function() { submitVote(this.innerHTML); };
+            node.classList.add("voteItem");
+            node.style.backgroundColor = "#6b6b6b";
+            var textnode = document.createTextNode("skip");
+            node.appendChild(textnode);
+
+            document.getElementById("playersList").appendChild(node);//add it to the list
+
+            if(!alive){
+                document.getElementById("playersList").style.opacity = 0.5;
+            }
+        });
+
+        function submitVote(vote){
+            if(votingEnabled){
+                if(alive){
+                    console.log(vote + " was voted for by " + name);
+                    socket.emit('vote', {name, vote});
+                    votingEnabled = false;
+                    document.getElementById("playersList").style.opacity = 0.5;
+                }
+                else{
+                    alert("your dead, what makes you think you can still vote?");
+                }
+            }
+            else{
+                alert("you already voted");
+            }
+        }
+
+        socket.on('voting complete', function(msg){
+
+            document.getElementById("playersList").style.opacity = 1;
+
+            console.log("voting complete");
+            console.log(msg.mostVotesKey);
+
+            document.getElementById("playersList").innerHTML = "";
+
+            for (var [key, value] of Object.entries(msg.voteNames)) {
+
+                console.log(key, value);
+
+                //create the item
+                var node = document.createElement("div");
+
+                node.classList.add("voteItem");
+
+                var y = value.split(/,/)
+                y.shift();
+
+                var textnode = document.createTextNode(key + " got votes from: " + y);
+
+                node.appendChild(textnode);
+                document.getElementById("playersList").appendChild(node);//add it to the list
+            }
+
+            if(!alive){
+                document.getElementById("playersList").style.opacity = 0.5;
+            }
+
+            setTimeout(function(){
+                document.getElementById("playersList").style.display = "none";
+
+                document.getElementById("deathMessage").style.display = "block";
+                document.getElementById("deathMessage").innerHTML = msg.mostVotesMessage;
+
+                if(msg.mostVotesKey == name){
+                    alive = false;
+                    document.getElementById("livePlayerButtons").innerHTML = "";
+                }
+            }, 5000);//how long to show the votes for
+
+            setTimeout(function(){
+                document.getElementById("deathMessage").style.display = "none";
+                document.getElementById("game").style.display = "block";
+
+                socket.emit('get state after vote', name);
+
+            }, 10000);//how long to show who died, remember to add the first time as well
+        });
+
+      });
+    </script>
+
+
+  </body>
+</html>
